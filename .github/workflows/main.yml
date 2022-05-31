@@ -45,3 +45,4 @@ jobs:
         with:
           # we have already installed all dependencies above
           install: false
+          start: pnpm dev
