@@ -5,7 +5,7 @@ on:
   - pull_request
 
 jobs:
-  cache-and-install:
+  cache-install-and-run-cypress:
     runs-on: ubuntu-latest
 
     steps:
@@ -39,3 +39,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Cypress run
+        uses: cypress-io/github-action@v2
+        with:
+          # we have already installed all dependencies above
+          install: false
