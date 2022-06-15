@@ -56,3 +56,44 @@ insert_permissions:
         - psbt
         - type
       backend_only: false
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - confirmed
+        - amount
+        - address
+        - asset
+        - contract
+        - hash
+        - hex
+        - json
+        - psbt
+        - type
+        - created_at
+        - artwork_id
+        - bid_id
+        - edition_id
+        - id
+        - user_id
+      filter: {}
+  - role: user
+    permission:
+      columns:
+        - confirmed
+        - amount
+        - address
+        - asset
+        - contract
+        - hash
+        - hex
+        - json
+        - psbt
+        - type
+        - created_at
+        - artwork_id
+        - bid_id
+        - edition_id
+        - id
+        - user_id
+      filter: {}

@@ -5,10 +5,10 @@ object_relationships:
   - name: artwork
     using:
       foreign_key_constraint_on: artwork_id
-  - name: transaction
+  - name: bid
     using:
       foreign_key_constraint_on: bid_id
-  - name: user
+  - name: owner
     using:
       foreign_key_constraint_on: owner_id
 array_relationships:
@@ -40,3 +40,40 @@ array_relationships:
         table:
           schema: public
           name: transactions
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - list_price
+        - edition
+        - views
+        - address
+        - asking_asset
+        - asset
+        - held
+        - list_psbt
+        - created_at
+        - transferred_at
+        - artwork_id
+        - bid_id
+        - id
+        - owner_id
+      filter: {}
+  - role: user
+    permission:
+      columns:
+        - list_price
+        - edition
+        - views
+        - address
+        - asking_asset
+        - asset
+        - held
+        - list_psbt
+        - created_at
+        - transferred_at
+        - artwork_id
+        - bid_id
+        - id
+        - owner_id
+      filter: {}

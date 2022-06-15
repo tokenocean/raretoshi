@@ -74,3 +74,60 @@ computed_fields:
       session_argument: hasura_session
       table_argument: artwork_row
     comment: ""
+  - name: views
+    definition:
+      function:
+        schema: public
+        name: artwork_views
+      table_argument: artwork_row
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - is_physical
+        - open_edition
+        - max_editions
+        - description
+        - filename
+        - filetype
+        - slug
+        - title
+        - created_at
+        - open_edition_end
+        - open_edition_start
+        - artist_id
+        - id
+      computed_fields:
+        - artist_owned
+        - favorited
+        - has_royalty
+        - last_active
+        - num_favorites
+        - views
+      filter: {}
+      allow_aggregations: true
+  - role: user
+    permission:
+      columns:
+        - is_physical
+        - open_edition
+        - max_editions
+        - description
+        - filename
+        - filetype
+        - slug
+        - title
+        - created_at
+        - open_edition_end
+        - open_edition_start
+        - artist_id
+        - id
+      computed_fields:
+        - artist_owned
+        - favorited
+        - has_royalty
+        - last_active
+        - num_favorites
+        - views
+      filter: {}
+      allow_aggregations: true
