@@ -22,7 +22,7 @@
   import Comments from "../_comments.svelte";
   import Sidebar from "../_sidebar.svelte";
   import { tick, onDestroy } from "svelte";
-  import { art, meta, prompt, password, psbt, commentsLimit } from "$lib/store";
+  import { meta, prompt, password, psbt, commentsLimit } from "$lib/store";
   import countdown from "$lib/countdown";
   import {
     confirm,
@@ -84,7 +84,6 @@
   let poll = setInterval(refreshArtwork, 2500);
 
   onDestroy(() => {
-    $art = undefined;
     clearInterval(poll);
   });
 
