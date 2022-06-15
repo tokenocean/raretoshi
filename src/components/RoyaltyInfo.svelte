@@ -5,11 +5,11 @@
     faChevronUp,
     faChevronDown,
   } from "@fortawesome/free-solid-svg-icons";
-  export let artwork;
+  export let edition;
   let show;
 </script>
 
-{#if artwork.royalty_recipients.length}
+{#if edition.royalty_recipients.length}
   <div class="mb-6">
     <div class="text-xs cursor-pointer mb-2" on:click={() => (show = !show)}>
       <div class="flex">
@@ -22,10 +22,10 @@
     </div>
     {#if show}
       <ul>
-        {#each artwork.royalty_recipients as recipient}
+        {#each edition.royalty_recipients as recipient}
           <RoyaltyRecipient
             editable={false}
-            askingAsset={artwork.asking_asset}
+            askingAsset={edition.asking_asset}
             {recipient}
           />
         {/each}

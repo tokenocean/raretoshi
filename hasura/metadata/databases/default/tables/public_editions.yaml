@@ -19,6 +19,13 @@ array_relationships:
         table:
           schema: public
           name: auctions
+  - name: comments
+    using:
+      foreign_key_constraint_on:
+        column: edition_id
+        table:
+          schema: public
+          name: comments
   - name: royalty_recipients
     using:
       foreign_key_constraint_on:

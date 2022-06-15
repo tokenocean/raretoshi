@@ -999,7 +999,7 @@ export const createSwap = async (artwork, amount, tx) => {
   return p;
 };
 
-export const createOffer = async (artwork, amount, input, f = 150) => {
+export const createOffer = async (edition, amount, input, f = 150) => {
   fee.set(f);
   amount = parseInt(amount);
 
@@ -1009,7 +1009,7 @@ export const createOffer = async (artwork, amount, input, f = 150) => {
     has_royalty,
     royalty_recipients,
     owner_id,
-  } = artwork;
+  } = edition;
 
   if (asset === btc && amount < DUST)
     throw new Error(`Minimum bid is ${(DUST / 100000000).toFixed(8)} L-BTC`);
@@ -1019,12 +1019,12 @@ export const createOffer = async (artwork, amount, input, f = 150) => {
   let p = new Psbt().addOutput({
     asset,
     nonce,
-    script: Address.toOutputScript(artwork.owner.address, network),
+    script: Address.toOutputScript(edition.owner.address, network),
     value: amount,
   });
 
   let total = parseInt(amount);
-  let pubkey = fromBase58(artwork.owner.pubkey, network).publicKey;
+  let pubkey = fromBase58(edition.owner.pubkey, network).publicKey;
 
   if (has_royalty) {
     if (artist_id !== owner_id) {
@@ -1046,14 +1046,14 @@ export const createOffer = async (artwork, amount, input, f = 150) => {
     }
 
     p.addOutput({
-      asset: artwork.asset,
+      asset: edition.asset,
       nonce,
-      script: isMultisig(artwork) ? multisig().output : singlesig().output,
+      script: isMultisig(edition) ? multisig().output : singlesig().output,
       value: 1,
     });
   } else {
     p.addOutput({
-      asset: artwork.asset,
+      asset: edition.asset,
       nonce,
       script: out.output,
       value: 1,
@@ -1063,11 +1063,11 @@ export const createOffer = async (artwork, amount, input, f = 150) => {
   try {
     await fund(
       p,
-      isMultisig(artwork) ? multisig({ pubkey }) : singlesig({ pubkey }),
-      artwork.asset,
+      isMultisig(edition) ? multisig({ pubkey }) : singlesig({ pubkey }),
+      edition.asset,
       1,
       1,
-      isMultisig(artwork)
+      isMultisig(edition)
     );
   } catch (e) {
     console.log(e);
@@ -1085,7 +1085,7 @@ export const createOffer = async (artwork, amount, input, f = 150) => {
       await fund(p, out, btc, get(fee));
     }
 
-    p.artwork_id = artwork.id;
+    p.edition_id = edition.id;
     await fund(p, out, asset, total);
   };
 

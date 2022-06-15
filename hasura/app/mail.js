@@ -8,7 +8,7 @@ import { auth } from "./auth.js";
 import {
   getUser,
   getEditionWithBidTransactionByHash,
-  getArtwork,
+  getEdition,
   getCurrentUser,
   getTransferTransactionsByPsbt,
 } from "./queries.js";
@@ -101,7 +101,7 @@ app.post("/mail-artist-application-denied", auth, async (req, res) => {
 
 app.post("/offer-notifications", auth, async (req, res) => {
   try {
-    const { artworkId, transactionHash } = req.body;
+    const { editionId, transactionHash } = req.body;
 
     let { data, errors } = await api(req.headers)
       .post({ query: getCurrentUser })
@@ -169,10 +169,10 @@ app.post("/offer-notifications", auth, async (req, res) => {
     await mail.send({
       template: "someone-bid",
       locals: {
-        userName: artwork.owner.full_name ? artwork.owner.full_name : "",
+        userName: edition.owner.full_name ? edition.owner.full_name : "",
         bidAmount: `${transaction.amount / 100000000} L-BTC`,
-        artworkTitle: artwork.title,
-        artworkUrl: `${constants.urls.protocol}/a/${artwork.slug}`,
+        artworkTitle: edition.artwork.title,
+        artworkUrl: `${constants.urls.protocol}/a/${edition.artwork.slug}`,
       },
       message: {
         to: artwork.owner.display_name,
@@ -194,7 +194,7 @@ app.post("/mail-purchase-successful", auth, async (req, res) => {
     }
     let { users_by_pk: user } = await query(getUser, { id });
 
-    const { artworks_by_pk: artwork } = await query(getArtwork, {
+    const { artworks_by_pk: artwork } = await query(getEdition, {
       id: artworkId,
     });
 
@@ -230,7 +230,7 @@ app.post("/mail-artwork-minted", auth, async (req, res) => {
     }
     let { users_by_pk: user } = await query(getUser, { id });
 
-    const { artworks_by_pk: artwork } = await query(getArtwork, {
+    const { artworks_by_pk: artwork } = await query(getEdition, {
       id: artworkId,
     });
 
@@ -265,7 +265,7 @@ app.post("/mail-artwork-sold", auth, async (req, res) => {
     }
     let { users_by_pk: user } = await query(getUser, { id });
 
-    const { artworks_by_pk: artwork } = await query(getArtwork, {
+    const { artworks_by_pk: artwork } = await query(getEdition, {
       id: artworkId,
     });
 
@@ -307,9 +307,9 @@ app.post("/mail-event-actions", async (req, res) => {
     return user;
   };
 
-  const getArtworkById = async (artworkId) => {
+  const getEditionById = async (artworkId) => {
     let { artworks_by_pk: artwork } = artworkId
-      ? await query(getArtwork, {
+      ? await query(getEdition, {
           id: artworkId,
         })
       : { artworks_by_pk: null };
@@ -349,19 +349,18 @@ app.post("/mail-event-actions", async (req, res) => {
       break;
     case TRANSACTION_RECEIPT:
       if (transaction.amount === 1) {
-        // send transfer artwork email
         const receiver = await getUserById(transaction.user_id);
         const transferTransaction = await getTransferTransaction(
           transaction.psbt
         );
         const sender = await getUserById(transferTransaction.user_id);
-        const artwork = await getArtworkById(transaction.artwork_id);
+        const edition = await getEditionById(transaction.edition_id);
 
         await mail.send({
           template: "artwork-transfered",
           locals: {
             userName: receiver ? receiver.username : "",
-            artworkName: artwork.title,
+            editionName: edition.artwork.title,
             senderName: sender ? sender.username : "",
           },
           message: {

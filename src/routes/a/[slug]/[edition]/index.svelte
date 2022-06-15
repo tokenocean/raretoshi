@@ -8,7 +8,7 @@
     faTimes,
     faInfoCircle,
   } from "@fortawesome/free-solid-svg-icons";
-  import { getArtworkBySlug, deleteArtwork } from "$queries/artworks";
+  import { getEdition } from "$queries/artworks";
   import { faHeart, faImage } from "@fortawesome/free-regular-svg-icons";
   import { compareAsc, format, parseISO } from "date-fns";
   import {
@@ -70,7 +70,7 @@
   let refreshArtwork = async () => {
     try {
       let { editions } = await query(getEdition, {
-        slug: edition.slug,
+        slug: artwork.slug,
         edition: edition.edition
       });
       edition = editions[0];
@@ -122,7 +122,7 @@
 
       await requirePassword($session);
 
-      $psbt = await createOffer(artwork, transaction.amount);
+      $psbt = await createOffer(edition, transaction.amount);
       $psbt = await sign();
 
       transaction.psbt = $psbt.toBase64();
@@ -135,7 +135,7 @@
         .url("/offer-notifications")
         .auth(`Bearer ${$token}`)
         .post({
-          artworkId: artwork.id,
+          editionId: edition.id,
           transactionHash: transaction.hash,
         });
 
@@ -177,14 +177,14 @@
       await requirePassword();
       loading = true;
 
-      transaction.amount = -artwork.list_price;
-      transaction.asset = artwork.asset;
+      transaction.amount = -edition.list_price;
+      transaction.asset = edition.asset;
       transaction.type = "purchase";
 
-      $psbt = await executeSwap(artwork);
+      $psbt = await executeSwap(edition);
       $psbt = await sign();
 
-      if (artwork.has_royalty || artwork.auction_end) {
+      if (edition.has_royalty || edition.auction_end) {
         $psbt = await requestSignature($psbt);
       }
 
@@ -195,19 +195,19 @@
       transaction.psbt = $psbt.toBase64();
 
       await save();
-      await refreshArtwork();
+      await refreshedition();
 
       await api
         .url("/mail-purchase-successful")
         .auth(`Bearer ${$token}`)
         .post({
           userId: $session.user.id,
-          artworkId: artwork.id,
+          editionId: edition.id,
         });
 
-      await api.url("/mail-artwork-sold").auth(`Bearer ${$token}`).post({
-        userId: artwork.owner.id,
-        artworkId: artwork.id,
+      await api.url("/mail-edition-sold").auth(`Bearer ${$token}`).post({
+        userId: edition.owner.id,
+        editionId: edition.id,
       });
     } catch (e) {
       err(e);
@@ -237,9 +237,9 @@
         {#if !artwork.open_edition}
           <div class="my-auto">
             Edition
-            {artwork.edition}
+            {edition.edition}
             of
-            {artwork.editions}
+            {artwork.editions.length}
           </div>
         {:else}
           <div class="my-auto flex justify-center items-center">
@@ -274,12 +274,12 @@
         </div>
         </a>
 
-        {#if artwork.artist_id !== artwork.owner_id && artwork.held}
+        {#if artwork.artist_id !== edition.owner_id && edition.held}
         <a href={`/${artwork.owner.username}`}>
           <div class="flex mb-6 secondary-color">
             <Avatar user={artwork.owner} />
             <div class="ml-2">
-              <div>@{artwork.owner.username}</div>
+              <div>@{edition.owner.username}</div>
               <div class="text-xs text-gray-600">Owner</div>
             </div>
           </div>
@@ -328,7 +328,7 @@
         {/if}
       </div>
 
-      <RoyaltyInfo {artwork} />
+      <RoyaltyInfo {edition} />
 
       {#if loading}
         <ProgressLinear />
@@ -488,10 +488,10 @@
       <p class="font-bold mt-20">History</p>
       <div class="flex mt-5">
         <div class="w-full">
-          {#each artwork.transactions.slice(0, showActivity ? artwork.transactions.length : 3) as transaction}
+          {#each edition.transactions.slice(0, showActivity ? edition.transactions.length : 3) as transaction}
             <Activity {transaction} />
           {/each}
-          {#if artwork.transactions.length > 3}
+          {#if edition.transactions.length > 3}
             <div
               class="flex text-xs cursor-pointer"
               on:click={() => (showActivity = !showActivity)}
@@ -538,9 +538,9 @@
       </div>
 
       <!-- Comments -->
-      {#if artwork.held}
+      {#if edition.held}
         <div class="mt-64">
-          <Comments bind:artwork bind:refreshArtwork />
+          <Comments bind:edition bind:refreshArtwork />
         </div>
       {/if}
 

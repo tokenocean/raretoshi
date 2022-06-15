@@ -83,7 +83,7 @@ export const updateArtwork = `mutation ($artwork: artworks_set_input!, $id: uuid
 }`;
 
 export const updateViews = `mutation ($id: uuid!) {
-  update_artworks_by_pk(pk_columns: { id: $id }, _inc: { views: 1 }) {
+  update_editions_by_pk(pk_columns: { id: $id }, _inc: { views: 1 }) {
     id
   }
 }`;
@@ -95,7 +95,7 @@ export const deleteTransaction = `mutation delete_transaction($id: uuid!) {
 }`;
 
 export const setHeld = `mutation ($id: uuid!, $held: String!) {
-  update_artworks_by_pk(pk_columns: { id: $id }, _set: { held: $held }) {
+  update_editions_by_pk(pk_columns: { id: $id }, _set: { held: $held }) {
     id
     owner {
       address
@@ -388,17 +388,19 @@ export const getEditionWithBidTransactionByHash = `query getEditionWithBidTransa
   }
 }`;
 
-export const getArtwork = `query($id: uuid!) {
-  artworks_by_pk(id: $id) {
+export const getEdition = `query($id: uuid!) {
+  editions_by_pk(id: $id) {
     id
     owner {
+      id
       address
       multisig
     }
-    owner_id
+    artwork {
+      title
+      slug
+    } 
     asset
-    title
-    slug
     list_price
   }
 }`;

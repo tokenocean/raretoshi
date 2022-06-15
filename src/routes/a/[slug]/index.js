@@ -19,11 +19,6 @@ export async function get({ request: { headers }, locals, params }) {
   let { id } = artwork;
   others = others.filter((a) => a.id !== id).slice(0, 3);
 
-  await api(headers).url("/viewed").post({ id }).json();
-  artwork.views++;
-
-  console.log("ART", artwork.views);
-
   let metadata = { ...branding.meta };
   metadata.title = metadata.title + " - " + artwork.title;
   metadata.keywords =

@@ -14,7 +14,7 @@
   import { broadcast, sign, pay, ACCEPTED } from "$lib/wallet";
   import { session } from "$app/stores";
 
-  export let artwork;
+  export let edition;
   export let refreshArtwork;
 
   let loading;
@@ -27,8 +27,8 @@
     await requirePassword();
     loading = true;
     try {
-      if (artwork.owner.id !== $session.user.id) {
-        await pay(undefined, artwork.owner.address, amount);
+      if (edition.owner.id !== $session.user.id) {
+        await pay(undefined, edition.owner.address, amount);
         await sign();
         await broadcast();
       }
@@ -37,8 +37,8 @@
         .url("/comment")
         .post({
           psbt: $psbt && $psbt.toBase64(),
-          artwork_id: artwork.id,
-          owner_id: artwork.owner_id,
+          edition_id: edition.id,
+          owner_id: edition.owner_id,
           comment,
           amount,
         })
@@ -80,10 +80,10 @@
     />
   </div>
   <div class="mt-4 {commentsToggle}">
-    {#if !artwork.comments.length}
+    {#if !edition.comments.length}
       <p>Be the first to leave a comment!</p>
     {/if}
-    {#each artwork.comments as comment}
+    {#each edition.comments as comment}
       <div class="flex mb-4">
         <Avatar user={comment.user} size="large" />
         <div class="ml-10">
@@ -97,7 +97,7 @@
             {formatDistanceStrict(new Date(comment.created_at), new Date())}
             ago
           </div>
-          {#if ($session.user && $session.user.id === comment.user.id) || ($session.user && $session.user.id === artwork.owner_id) || ($session.user && $session.user.is_admin)}
+          {#if ($session.user && $session.user.id === comment.user.id) || ($session.user && $session.user.id === edition.owner_id) || ($session.user && $session.user.is_admin)}
             <button
               class="text-red-500 text-xs hover:text-red-700"
               on:click={() => handleDelete(comment.id)}>Delete</button
@@ -109,7 +109,7 @@
     {#if loading}
       <ProgressLinear />
     {:else}
-      {#if $commentsLimit !== undefined && artwork.comments.length}
+      {#if $commentsLimit !== undefined && edition.comments.length}
         <button
           class="primary-btn w-full"
           on:click={() => {
@@ -126,7 +126,7 @@
           class="w-full mt-8 border rounded"
           bind:value={comment}
         />
-        {#if ($session.user && $session.user.id !== artwork.owner_id) || !$session.user}
+        {#if ($session.user && $session.user.id !== edition.owner_id) || !$session.user}
           <div class="relative pt-1">
             <label for="customRange1" class="form-label"
               >Owner Donation (min. 1000 sats)<br />

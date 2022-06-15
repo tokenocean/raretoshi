@@ -14,7 +14,7 @@ import {
   createOpenEdition,
   createTransaction,
   deleteTransaction,
-  getArtwork,
+  getEdition,
   getUserByAddress,
   getTransactionArtwork,
   getTransactionUser,
@@ -119,8 +119,9 @@ app.post("/transfer", auth, async (req, res) => {
 
 app.post("/held", async (req, res) => {
   try {
-    let { artworks_by_pk: artwork } = await q(getArtwork, { id: req.body.id });
-    let { asset, owner } = artwork;
+    let { id } = req.body;
+    let { editions_by_pk: edition } = await q(getEdition, { id });
+    let { asset, owner } = edition;
     let { address, multisig } = owner;
 
     let find = async (a) =>
@@ -132,7 +133,7 @@ app.post("/held", async (req, res) => {
     if (await find(address)) held = "single";
     if (await find(multisig)) held = "multisig";
 
-    let result = await q(setHeld, { id: req.body.id, held });
+    let result = await q(setHeld, { id, held });
 
     res.send({});
   } catch (e) {
@@ -143,7 +144,7 @@ app.post("/held", async (req, res) => {
 
 app.post("/viewed", async (req, res) => {
   try {
-    let { update_artworks_by_pk } = await q(updateViews, { id: req.body.id });
+    let { update_editions_by_pk } = await q(updateViews, { id: req.body.id });
     res.send({});
   } catch (e) {
     console.log(e);
@@ -286,81 +287,57 @@ app.post("/create", auth, async (req, res) => {
 });
 
 const issuances = {};
-const issue = async (issuance, ids, { artwork, transactions, user_id }) => {
+const issue = async (issuance, ids, { edition, transactions, user_id }) => {
   issuances[issuance] = { length: transactions.length, i: 0 };
+
   let tries = 0;
   let i = 0;
   let contract, psbt, openEditionPsbt;
 
-  let tags = artwork.tags.map(({ tag }) => ({
-    tag,
-    artwork_id: artwork.id,
-  }));
-
-  delete artwork.tags;
-
-  artwork.artist_id = user_id;
-  artwork.owner_id = user_id;
+  edition.owner_id = user_id;
 
   while (i < transactions.length && tries < 60) {
     await sleep(600);
     try {
-      artwork.id = ids[i];
-      artwork.edition = i + 1;
-      artwork.slug = kebab(artwork.title || "untitled");
-      tags.map((tag) => (tag.artwork_id = ids[i]));
+      edition.edition = i + 1;
 
-      if (i > 0) artwork.slug += "-" + i + 1;
-      artwork.slug += "-" + artwork.id.substr(0, 5);
+      ({ contract, psbt, openEditionPsbt } = transactions[i]);
+      let p = Psbt.fromBase64(psbt);
 
-      if (!artwork.open_edition) {
-        ({ contract, psbt, openEditionPsbt } = transactions[i]);
-        let p = Psbt.fromBase64(psbt);
-
-        try {
-          await broadcast(p);
-        } catch (e) {
-          if (!e.message.includes("already")) throw e;
-        }
-
-        let tx = p.extractTransaction();
-        let hash = tx.getId();
-        contract = JSON.stringify(contract);
-        artwork.asset = parseAsset(
-          tx.outs.find((o) => parseAsset(o.asset) !== btc).asset
-        );
+      try {
+        await broadcast(p);
+      } catch (e) {
+        if (!e.message.includes("already")) throw e;
       }
 
-      await q(createArtwork, {
-        artwork,
-        tags,
+      let tx = p.extractTransaction();
+      let hash = tx.getId();
+      contract = JSON.stringify(contract);
+
+      let asset = parseAsset(
+        tx.outs.find((o) => parseAsset(o.asset) !== btc).asset
+      );
+
+      edition.asset = asset;
+
+      let { id: edition_id } = await q(createEdition, { edition });
+
+      await q(createTransaction, {
+        transaction: {
+          edition_id,
+          user_id,
+          type: "creation",
+          hash,
+          contract,
+          asset, 
+          amount: 1,
+          psbt: p.toBase64(),
+        },
       });
-
-      if (artwork.open_edition) {
-        await q(createOpenEdition, {
-          o: {
-            artwork_id: artwork.id,
-            psbt: openEditionPsbt,
-          },
-        });
-      } else {
-        await q(createTransaction, {
-          transaction: {
-            artwork_id: artwork.id,
-            user_id: artwork.artist_id,
-            type: "creation",
-            hash,
-            contract,
-            asset: artwork.asset,
-            amount: 1,
-            psbt: p.toBase64(),
-          },
-        });
-      }
 
       tries = 0;
       issuances[issuance].i = ++i;
-      issuances[issuance].asset = artwork.asset;
+      issuances[issuance].asset = asset;
 
       console.log("issued", artwork.slug);
     } catch (e) {
@@ -387,11 +364,13 @@ app.post("/issue", auth, async (req, res) => {
   let tries = 0;
   try {
     let { address, multisig, id: user_id } = await getUser(req);
-    let { artwork, transactions } = req.body;
+    let { edition, transactions } = req.body;
+    let { artwork } = edition;
+
     let issuance = v4();
     let ids = transactions.map((t) => v4());
     issue(issuance, ids, {
-      artwork,
+      edition,
       transactions,
       user_id,
     });
@@ -429,13 +408,13 @@ app.post("/comment", auth, async (req, res) => {
 
     let {
       artworks_by_pk: { owner_id },
-    } = await q(getArtwork, { id: artwork_id });
+    } = await q(getEdition, { id: edition_id });
     let user = await getUser(req);
 
     if (user.id !== owner_id) {
       let transaction = {
         amount,
-        artwork_id,
+        edition_id,
         asset: btc,
         hash: Psbt.fromBase64(psbt).extractTransaction().getId(),
         user_id: user.id,
@@ -447,7 +426,7 @@ app.post("/comment", auth, async (req, res) => {
     }
 
     let comment = {
-      artwork_id,
+      edition_id,
       user_id: user.id,
       comment: commentBody,
     };
