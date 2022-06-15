@@ -47,7 +47,6 @@ insert_permissions:
         user_id: x-hasura-User-Id
       columns:
         - amount
-        - artwork_id
         - asset
         - bid_id
         - contract
@@ -60,40 +59,59 @@ select_permissions:
   - role: anonymous
     permission:
       columns:
-        - confirmed
-        - amount
         - address
+        - amount
         - asset
+        - bid_id
+        - confirmed
         - contract
+        - created_at
+        - edition_id
         - hash
         - hex
+        - id
         - json
         - psbt
         - type
-        - created_at
-        - artwork_id
-        - bid_id
-        - edition_id
-        - id
         - user_id
-      filter: {}
+      filter:
+        _or:
+          - edition_id:
+              _is_null: true
+          - edition:
+              _or:
+                - transferred_at:
+                    _is_null: false
+                - asking_asset:
+                    _is_null: false
   - role: user
     permission:
       columns:
-        - confirmed
-        - amount
         - address
+        - amount
         - asset
+        - bid_id
+        - confirmed
         - contract
+        - created_at
+        - edition_id
         - hash
         - hex
+        - id
         - json
         - psbt
         - type
-        - created_at
-        - artwork_id
-        - bid_id
-        - edition_id
-        - id
         - user_id
-      filter: {}
+      filter:
+        _or:
+          - edition_id:
+              _is_null: true
+          - edition:
+              _or:
+                - transferred_at:
+                    _is_null: false
+                - asking_asset:
+                    _is_null: false
+                - artwork:
+                    artist_id:
+                      _eq: X-Hasura-User-Id
