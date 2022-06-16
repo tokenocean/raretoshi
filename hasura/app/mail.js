@@ -103,13 +103,7 @@ app.post("/offer-notifications", auth, async (req, res) => {
   try {
     const { editionId, transactionHash } = req.body;
 
-    let { data, errors } = await api(req.headers)
-      .post({ query: getCurrentUser })
-      .json();
-
-    if (errors) throw new Error(errors[0].message);
-    let currentUser = data.currentuser[0];
-
+    const user = await getUser(req);
     const { editions_by_pk: edition, transactions } = await query(
       getEditionWithBidTransactionByHash,
       {
@@ -134,7 +128,7 @@ app.post("/offer-notifications", auth, async (req, res) => {
       sortedBidTransactions.length > 1 ? sortedBidTransactions[1] : null;
 
     const highestBidderIsCurrentBidder =
-      outbiddedTransaction?.user?.display_name === currentUser.display_name;
+      outbiddedTransaction?.user?.display_name === user.display_name;
 
     outbiddedTransaction &&
       !highestBidderIsCurrentBidder &&

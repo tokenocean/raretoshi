@@ -70,7 +70,7 @@ setInterval(async () => {
 
           await q(releaseToken, {
             id: artwork.id,
-            owner_id: artwork.owner.id,
+            owner_id: edition.owner.id,
             amount: 0,
             hash: psbt.extractTransaction().getId(),
             psbt: psbt.toBase64(),

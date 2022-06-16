@@ -285,7 +285,7 @@
           </div>
           </a>
         {/if}
-        {#if !artwork.held}
+        {#if !edition.held}
           <a href="https://bitcoin.org/bitcoin.pdf">
             <div class="flex mb-6 secondary-color">
               <Avatar src="/satoshi.jpg" />
@@ -332,16 +332,16 @@
 
       {#if loading}
         <ProgressLinear />
-      {:else if $session.user && $session.user.id === artwork.owner_id && artwork.held}
+      {:else if $session.user && $session.user.id === edition.owner_id && edition.held}
         <div class="w-full mb-2">
           <a
             sveltekit:prefetch
-            href={disabled ? "" : `/a/${artwork.slug}/auction`}
+             href={disabled ? "" : `/a/${artwork.slug}/${edition.edition}/list`}
             class="block text-center text-sm secondary-btn w-full"
             class:disabled>List</a
           >
         </div>
-        {#if artwork.held === "multisig" && !artwork.has_royalty && !artwork.auction_end && !artwork.open_edition}
+        {#if edition.held === "multisig" && !edition.has_royalty && !edition.auction_end && !artwork.open_edition}
           <div class="w-full mb-2">
             <a
               href="/"

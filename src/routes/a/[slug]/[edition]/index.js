@@ -14,14 +14,11 @@ export async function get({ request: { headers }, locals, params }) {
   let edition = editions[0];
   let { artwork, id } = edition;
 
-console.log("ARTWORK", artwork.artist.id);
   let { artworks: others } = await q(getArtworksByArtist, {
     id: artwork.artist.id,
     limit: 5,
   });
 
-
-  console.log("OTHERS", others);
   others = others.filter((a) => a.id !== artwork.id).slice(0, 3);
 
   await api(headers).url("/held").post({ id }).json();

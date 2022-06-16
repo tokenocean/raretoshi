@@ -50,6 +50,7 @@ export const editionFields = `
   list_price
   transferred_at
   owner_id
+  held
   artwork {
     ${artworkFields}
   } 
