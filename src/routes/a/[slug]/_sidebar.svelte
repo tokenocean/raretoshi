@@ -8,6 +8,8 @@
   import { explorer, goto } from "$lib/utils";
 
   export let artwork;
+  export let edition;
+
   let showDetails = false;
 </script>
 
@@ -22,7 +24,7 @@
   </div>
 
   <div class="text-sm text-gray-600 break-all mt-6 mb-2">
-    {#if artwork.asset}
+    {#if edition?.asset}
     <div class="flex">
       <img src="/liquid.svg" class="w-8 my-auto" />
       <a
@@ -50,7 +52,7 @@
     </div>
     <div class="art-likes">
       <Eye />
-      <p>{artwork.views}</p>
+      <p>{edition?.views || 0}</p>
     </div>
   </div>
 </div>

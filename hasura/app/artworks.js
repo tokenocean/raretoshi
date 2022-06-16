@@ -11,6 +11,7 @@ import {
   cancelBid,
   createArtwork,
   createComment,
+  createEdition,
   createOpenEdition,
   createTransaction,
   deleteTransaction,
@@ -287,14 +288,14 @@ app.post("/create", auth, async (req, res) => {
 });
 
 const issuances = {};
-const issue = async (issuance, ids, { edition, transactions, user_id }) => {
+const issue = async (issuance, ids, { artwork, transactions, user }) => {
   issuances[issuance] = { length: transactions.length, i: 0 };
 
   let tries = 0;
   let i = 0;
   let contract, psbt, openEditionPsbt;
 
-  edition.owner_id = user_id;
+  let edition = { artwork_id: artwork.id, owner_id: user.id, address: user.address };
 
   while (i < transactions.length && tries < 60) {
     await sleep(600);
@@ -325,11 +326,11 @@ const issue = async (issuance, ids, { edition, transactions, user_id }) => {
       await q(createTransaction, {
         transaction: {
           edition_id,
-          user_id,
+          user_id: user.id,
           type: "creation",
           hash,
           contract,
-          asset, 
+          asset,
           amount: 1,
           psbt: p.toBase64(),
         },
@@ -339,9 +340,9 @@ const issue = async (issuance, ids, { edition, transactions, user_id }) => {
       issuances[issuance].i = ++i;
       issuances[issuance].asset = asset;
 
-      console.log("issued", artwork.slug);
+      console.log("issued", artwork.slug, i);
     } catch (e) {
-      console.log("failed issuance", e, artwork, psbt);
+      console.log("failed issuance", e, edition, psbt);
       await sleep(5000);
       tries++;
     }
@@ -360,21 +361,20 @@ const issue = async (issuance, ids, { edition, transactions, user_id }) => {
   }
 };
 
-app.post("/issue", auth, async (req, res) => {
+app.post("/mint", auth, async (req, res) => {
   let tries = 0;
   try {
-    let { address, multisig, id: user_id } = await getUser(req);
-    let { edition, transactions } = req.body;
-    let { artwork } = edition;
+    let user = await getUser(req);
+    let { artwork, transactions } = req.body;
+    let { address, multisig } = user;
 
     let issuance = v4();
     let ids = transactions.map((t) => v4());
     issue(issuance, ids, {
-      edition,
+      artwork,
       transactions,
-      user_id,
+      user,
     });
-    let slug = kebab(artwork.title || "untitled") + "-" + ids[0].substr(0, 5);
 
     await wait(async () => {
       if (++tries > 40) throw new Error("Issuance timed out");
@@ -386,7 +386,7 @@ app.post("/issue", auth, async (req, res) => {
       return utxos.find((tx) => tx.asset === issuances[issuance].asset);
     });
 
-    res.send({ id: ids[0], asset: issuances[issuance].asset, issuance, slug });
+    res.send({ id: ids[0], asset: issuances[issuance].asset, issuance });
   } catch (e) {
     console.log(e);
     res.code(500).send(e.message);

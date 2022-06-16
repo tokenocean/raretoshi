@@ -435,6 +435,12 @@ export const getTransferTransactionsByPsbt = `query($psbt: String!) {
   }
 }`;
 
+export const createEdition = `mutation($edition: editions_insert_input!) {
+  insert_editions_one(object: $edition) {
+    id
+  }
+}`;
+
 export const createArtwork = `mutation($artwork: artworks_insert_input!, $tags: [tags_insert_input!]!) {
   insert_artworks_one(object: $artwork) {
     id

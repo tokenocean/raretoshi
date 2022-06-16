@@ -239,7 +239,7 @@
             Edition
             {edition.edition}
             of
-            {artwork.editions.length}
+            <a href={`/a/${artwork.slug}`} class="text-secondary">{artwork.editions.length}</a>
           </div>
         {:else}
           <div class="my-auto flex justify-center items-center">

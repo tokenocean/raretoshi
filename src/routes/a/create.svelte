@@ -34,7 +34,6 @@
   import { address } from "liquidjs-lib";
 
   import Form from "./_form.svelte";
-  import Issuing from "./_issuing.svelte";
 
   let preview;
   let filename;

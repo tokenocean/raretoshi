@@ -12,6 +12,7 @@
   import { confirm, err, goto, info, linkify } from "$lib/utils";
   import { ACCEPTED } from "$lib/wallet";
   import { query } from "$lib/api";
+  import { mint } from "$lib/mint";
   import { deleteArtwork } from "$queries/artworks";
 
   export let artwork, others, metadata;
@@ -44,7 +45,7 @@
           <div class="my-auto">
             {artwork.editions.length}
             {#if artwork.max_editions}
-            of {artwork.max_editions}
+              of {artwork.max_editions}
             {/if}
             Editions Minted
           </div>
@@ -89,28 +90,26 @@
       </div>
 
       {#if $session?.user?.id === artwork.artist_id && !artwork.sold}
-          <div class="w-full mb-2">
-            <a
-              href={`/a/${artwork.slug}/edit`}
-              class="block text-center text-sm secondary-btn w-full"
-              >Edit</a
-            >
-          </div>
-          <div class="w-full mb-2">
-            <a
-              href={`/a/${artwork.slug}/mint`}
-              class="block text-center text-sm secondary-btn w-full"
-              >Mint</a
-            >
-          </div>
-          <div class="w-full mb-2">
-            <a
-              href={"JavaScript:void(0)"}
-              on:click={handleDelete}
-              class="block text-center text-sm secondary-btn w-full cursor-pointer"
-              >Delete</a
-            >
-          </div>
+        <div class="w-full mb-2">
+          <a
+            href={`/a/${artwork.slug}/edit`}
+            class="block text-center text-sm secondary-btn w-full">Edit</a
+          >
+        </div>
+        <div class="w-full mb-2">
+          <a
+             on:click={() => mint(artwork, $session.user.address)}
+            class="block text-center text-sm secondary-btn w-full">Mint</a
+          >
+        </div>
+        <div class="w-full mb-2">
+          <a
+            href={"JavaScript:void(0)"}
+            on:click={handleDelete}
+            class="block text-center text-sm secondary-btn w-full cursor-pointer"
+            >Delete</a
+          >
+        </div>
       {/if}
 
       <Sidebar bind:artwork />

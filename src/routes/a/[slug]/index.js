@@ -8,7 +8,9 @@ export async function get({ request: { headers }, locals, params }) {
   let { q } = locals;
 
   let { artworks } = await q(getArtworkBySlug, { slug });
+  console.log(artworks, slug);
   let artwork = artworks[0];
+
   let { editions } = artwork;
 
   let { artworks: others } = await q(getArtworksByArtist, {
