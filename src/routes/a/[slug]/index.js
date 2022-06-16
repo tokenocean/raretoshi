@@ -8,10 +8,7 @@ export async function get({ request: { headers }, locals, params }) {
   let { q } = locals;
 
   let { artworks } = await q(getArtworkBySlug, { slug });
-  console.log(artworks, slug);
   let artwork = artworks[0];
-
-  let { editions } = artwork;
 
   let { artworks: others } = await q(getArtworksByArtist, {
     id: artwork.artist_id,
@@ -35,14 +32,10 @@ export async function get({ request: { headers }, locals, params }) {
     artwork.filetype.split("/")[1]
   }`;
 
-  if (editions.length === 1) {
-    return {
-      status: 302,
-      headers: {
-        location: `/a/${slug}/1`,
-      },
-    };
-  }
+  let location;
+  if (artwork.num_editions === 1) location = `/a/${slug}/1`;
+  if (artwork.num_editions > 1) location = `/a/${slug}/editions `;
+  if (location) return { status: 302, headers: { location }};
 
-  return { body: { artwork, count: editions.length, others, metadata } };
+  return { body: { artwork, others, metadata } };
 }

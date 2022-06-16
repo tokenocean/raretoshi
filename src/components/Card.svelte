@@ -68,12 +68,12 @@
                 (unlisted)
               {/if}
             </h1>
-            {#if artwork.editions > 1}
+            {#if artwork.num_editions > 1}
               <h2 class="text-xs text-gray-400 font-light mb-auto">
                 Edition
                 {artwork.edition}
                 of
-                {artwork.editions}
+                {artwork.num_editions}
               </h2>
             {/if}
           </a>

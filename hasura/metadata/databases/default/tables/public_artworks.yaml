@@ -72,6 +72,12 @@ computed_fields:
         schema: public
         name: artwork_last_tx
     comment: ""
+  - name: num_editions
+    definition:
+      function:
+        schema: public
+        name: artwork_num_editions
+      table_argument: artwork_row
   - name: num_favorites
     definition:
       function:
@@ -120,6 +126,7 @@ select_permissions:
         - favorited
         - has_royalty
         - last_active
+        - num_editions
         - num_favorites
         - sold
         - views
@@ -146,6 +153,7 @@ select_permissions:
         - favorited
         - has_royalty
         - last_active
+        - num_editions
         - num_favorites
         - sold
         - views

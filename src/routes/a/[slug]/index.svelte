@@ -43,11 +43,13 @@
       <div class="flex mt-4 mb-6">
         {#if !artwork.open_edition}
           <div class="my-auto">
-            {artwork.editions.length}
-            {#if artwork.max_editions}
-              of {artwork.max_editions}
-            {/if}
-            Editions Minted
+            <a href={`/a/${artwork.slug}/editions`}>
+              {artwork.num_editions}
+              {#if artwork.max_editions}
+                of {artwork.max_editions}
+              {/if}
+              Editions
+            </a>
           </div>
         {:else}
           <div class="my-auto flex justify-center items-center">
@@ -98,7 +100,7 @@
         </div>
         <div class="w-full mb-2">
           <a
-             on:click={() => mint(artwork, $session.user.address)}
+            on:click={() => mint(artwork, $session.user.address)}
             class="block text-center text-sm secondary-btn w-full">Mint</a
           >
         </div>

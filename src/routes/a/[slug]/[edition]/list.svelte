@@ -14,16 +14,6 @@
   import { requirePassword } from "$lib/auth";
   import { createTransaction } from "$queries/transactions";
   import {
-    createSwap,
-    cancelSwap,
-    sign,
-    signAndBroadcast,
-    signOver,
-    sendToMultisig,
-    requestSignature,
-    createRelease,
-  } from "$lib/wallet";
-  import {
     format,
     addDays,
     compareAsc,
@@ -108,7 +98,6 @@
     }
   }
 
-console.log(edition);
   royalty_recipients = edition.royalty_recipients;
 
   if (!list_price && edition.list_price)
@@ -122,178 +111,8 @@ console.log(edition);
   if (!reserve_price && edition.reserve_price)
     reserve_price = val(edition.asking_asset, edition.reserve_price);
 
-  const spendPreviousSwap = async () => {
-    if (
-      !list_price ||
-      royalty_value ||
-      edition.auction_end ||
-      parseInt(edition.list_price || 0) ===
-        sats(edition.asking_asset, list_price)
-    )
-      return true;
 
-    await requirePassword();
-
-    if (edition.list_price_tx) {
-      $psbt = await cancelSwap(edition, 500);
-
-      if (edition.has_royalty || edition.auction_end) {
-        $psbt = await requestSignature($psbt);
-      }
-      try {
-        await signAndBroadcast();
-        await query(createTransaction, {
-          transaction: {
-            amount: edition.list_price,
-            edition_id: edition.id,
-            asset: edition.asking_asset,
-            hash: $psbt.extractTransaction().getId(),
-            psbt: $psbt.toBase64(),
-            type: "cancel",
-          },
-        });
-
-        stale = true;
-      } catch (e) {
-        if (e.message.includes("already"))
-          throw new Error(
-            "Please wait a block before changing the listing price"
-          );
-        else throw e;
-      }
-    }
-  };
-
-  const setupSwaps = async () => {
-    if (
-      !list_price ||
-      (!stale &&
-        parseInt(edition.list_price || 0) ===
-          sats(edition.asking_asset, list_price))
-    )
-      return true;
-
-    let tx;
-    if (stale) tx = $psbt.extractTransaction();
-    await requirePassword();
-
-    $psbt = await createSwap(
-      edition,
-      sats(edition.asking_asset, list_price),
-      tx
-    );
-
-    $psbt = await sign(0x83);
-    edition.list_price_tx = $psbt.toBase64();
-
-    await query(createTransaction, {
-      transaction: {
-        amount: sats(edition.asking_asset, list_price),
-        edition_id: edition.id,
-        asset: edition.asking_asset,
-        hash: $psbt.__CACHE.__TX.getId(),
-        psbt: $psbt.toBase64(),
-        type: "listing",
-      },
-    });
-
-    info("List price updated!");
-  };
-
-  let setupAuction = async () => {
-    if (!auction_enabled) return true;
-
-    let start = parse(
-      `${start_date} ${start_time}`,
-      "yyyy-MM-dd HH:mm",
-      new Date()
-    );
-
-    let end = parse(`${end_date} ${end_time}`, "yyyy-MM-dd HH:mm", new Date());
-
-    if (compareAsc(start, new Date()) < 1)
-      throw new Error("Start date can't be in the past");
-
-    if (compareAsc(start, end) > 0)
-      throw new Error("Start date must precede end date");
-
-    if (
-      !edition.auction_end ||
-      compareAsc(parseISO(edition.auction_end), new Date()) < 1
-    ) {
-      await requirePassword();
-
-      let base64, tx;
-
-      if (edition.held === "multisig") {
-        tx = await signOver(edition);
-        await tick();
-        edition.auction_tx = $psbt.toBase64();
-      } else {
-        $psbt = await sendToMultisig(edition);
-        $psbt = await signAndBroadcast();
-        base64 = $psbt.toBase64();
-        tx = $psbt.extractTransaction();
-
-        tx = await signOver(edition, tx);
-        await tick();
-        edition.auction_tx = $psbt.toBase64();
-
-        edition.auction_release_tx = (
-          await createRelease(edition, tx)
-        ).toBase64();
-      }
-
-      await query(createTransaction, {
-        transaction: {
-          amount: 1,
-          edition_id: edition.id,
-          asset: edition.asking_asset,
-          hash: tx.getId(),
-          psbt: $psbt.toBase64(),
-          type: "auction",
-        },
-      });
-
-      if (base64) $psbt = Psbt.fromBase64(base64);
-    }
-
-    edition.held = "multisig";
-    edition.auction_start = start;
-    edition.auction_end = end;
-  };
-
-  let stale;
-  let setupRoyalty = async () => {
-    if (edition.has_royalty || !royalty_value) return true;
-
-    if (!edition.auction_end) {
-      await requirePassword();
-      $psbt = await sendToMultisig(edition);
-      await signAndBroadcast();
-    }
-
-    edition.has_royalty = true;
-
-    await query(createTransaction, {
-      transaction: {
-        amount: 1,
-        edition_id: edition.id,
-        asset: edition.asking_asset,
-        hash: $psbt.extractTransaction().getId(),
-        psbt: $psbt.toBase64(),
-        type: "royalty",
-      },
-    });
-
-    stale = true;
-
-    edition.held = "multisig";
-
-    info("Royalties activated!");
-  };
-
-  let update = async (e) => {
+  let submit = async (e) => {
     loading = true;
 
     try {
@@ -347,7 +166,7 @@ console.log(edition);
           : [],
       });
 
-      api.url("/asset/register").post({ asset }).json().catch(console.log);
+      // api.url("/asset/register").post({ asset }).json().catch(console.log);
 
       goto(`/a/${edition.artwork.slug}/${edition.edition}`);
     } catch (e) {
@@ -358,18 +177,6 @@ console.log(edition);
   };
 
   let clearPrice = () => (list_price = undefined);
-
-  $: enableAuction(auction_enabled);
-  let enableAuction = () => {
-    if (!start_date) {
-      start_date = format(addMinutes(new Date(), 15), "yyyy-MM-dd");
-      start_time = format(addMinutes(new Date(), 15), "HH:mm");
-    }
-    if (!end_date) {
-      end_date = format(addMinutes(addDays(new Date(), 3), 15), "yyyy-MM-dd");
-      end_time = format(addMinutes(addDays(new Date(), 3), 15), "HH:mm");
-    }
-  };
 
   $: listingCurrencies = edition.transferred_at
     ? Object.keys(tickers)
@@ -396,235 +203,12 @@ console.log(edition);
         </h4>
       {/if}
 
-      <form class="w-full mb-6 mt-12" on:submit={update} autocomplete="off">
-        <div class="flex flex-col mt-4">
-          <p>Listing currency</p>
-          <div class="flex flex-wrap">
-            {#each listingCurrencies as c}
-              <label for={c} class="ml-2 mr-6 flex items-center">
-                <input
-                  id={c}
-                  class="form-radio h-6 w-6 mt-4 mr-2"
-                  type="radio"
-                  name={c}
-                  value={c}
-                  bind:group={edition.asking_asset}
-                  on:change={clearPrice}
-                  disabled={auction_underway}
-                />
-                <p class="mb-2 whitespace-nowrap">
-                  {c ? ticker(c) : "Unlisted"}
-                </p>
-              </label>
-            {/each}
-          </div>
-        </div>
-
+      <form class="w-full mb-6 mt-12" on:submit={submit} autocomplete="off">
         {#if edition.asking_asset}
-          {#if !edition.redeem_code}
-            <div class="flex w-full sm:w-3/4 mb-4">
-              <div class="relative mt-1 rounded-md w-2/3 mr-6">
-                <label for="price"
-                  >Price
-                  <span class="tooltip">
-                    <i class="text-midblue text-xl tooltip">
-                      <Fa icon={faQuestionCircle} pull="right" class="mt-1" />
-                    </i>
-                    <span class="tooltip-text bg-gray-100 shadow ml-4 rounded">
-                      Setting a price is optional. If you set one, your wallet
-                      will generate a partially signed atomic swap transaction.
-                      If you run an auction, this price will be the "buy it now"
-                      or buyout price that lets people skip the bidding process
-                      and immediately purchase the artwork.
-                      <br /><br />
-                      Changing the price involves sending an on-chain cancellation
-                      transaction to invalidate your half of the atomic swap transaction
-                      and will incur a transaction fee.
-                    </span>
-                  </span></label
-                >
-                <input
-                  id="price"
-                  class="form-input block w-full pl-7 pr-12"
-                  placeholder={val(edition.asking_asset, 0)}
-                  bind:value={list_price}
-                  bind:this={input}
-                  disabled={auction_underway}
-                />
-                <div
-                  class="absolute inset-y-0 right-0 flex items-center mr-2 mt-4"
-                >
-                  {ticker(edition.asking_asset)}
-                </div>
-              </div>
-            </div>
-          {/if}
-          {#if user.id === edition.artwork.artist_id}
-          <!--
-            <div class="redeem-toggle">
-              <label for="redeem" class="inline-flex items-center">
-                <input
-                  id="redeem"
-                  class="form-checkbox h-6 w-6 mt-3"
-                  type="checkbox"
-                  bind:checked={edition.redeem_code}
-                />
-                <span class="ml-3 text-xl">Redeem Code</span>
-                <span class="tooltip">
-                  <i class="ml-3 text-midblue text-xl tooltip">
-                    <Fa icon={faQuestionCircle} pull="right" class="mt-1" />
-                  </i>
-                  <span class="tooltip-text bg-gray-100 shadow ml-4 rounded">
-                    If selected this NFT will only be available to those who
-                    have a valid redeem code.
-                  </span>
-                </span></label
-              >
-            </div>
-          -->
-            <div class="flex w-full sm:w-3/4 mb-4">
-              <div class="relative mt-1 rounded-md w-2/3 mr-6">
-                <div class="royalty-toggle">
-                  <label class="inline-flex items-center">
-                    <input
-                      class="form-checkbox h-6 w-6 mt-3"
-                      type="checkbox"
-                      bind:checked={multi_royalty_recipients_enabled}
-                      disabled={auction_underway}
-                    />
-                    <span class="ml-3 text-xl">Royalty Recipients</span>
-                    <span class="tooltip">
-                      <i class="ml-3 text-midblue text-xl tooltip">
-                        <Fa icon={faQuestionCircle} pull="right" class="mt-1" />
-                      </i>
-                      <span
-                        class="tooltip-text bg-gray-100 shadow ml-4 rounded"
-                      >
-                        Setting royalty recipients involves transferring the
-                        artwork to a 2-of-2 multisig address with us. Our server
-                        will co-sign on transfers if the buyer pays the
-                        specified royalty to each recipient.
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              </div>
-            </div>
-            {#if multi_royalty_recipients_enabled}
-              <div class="w-full ">
-                <RoyaltyRecipientList
-                  bind:items={royalty_recipients}
-                  bind:royaltyValue={royalty_value}
-                  maxTotalRate={100}
-                  askingAsset={edition.asking_asset}
-                  artist={edition.artist}
-                />
-              </div>
-            {/if}
-          {/if}
-          <div class="auction-toggle">
-            <label for="auction" class="inline-flex items-center">
-              <input
-                id="auction"
-                class="form-checkbox h-6 w-6 mt-3"
-                type="checkbox"
-                bind:checked={auction_enabled}
-                disabled={auction_underway}
-              />
-              <span class="ml-3 text-xl">Create an auction</span>
-            </label>
-          </div>
-          {#if auction_enabled}
-            <div class="aution-container">
-              <div class="flex auction justify-between flex-wrap">
-                <div class="flex flex-col">
-                  <h4 class="mb-4">Auction start</h4>
-                  <div class="flex justify-between">
-                    <div class="flex flex-col mb-4 mr-6">
-                      <label for="date">Date</label>
-                      <input
-                        id="date"
-                        type="date"
-                        name="date"
-                        bind:value={start_date}
-                        disabled={auction_underway}
-                      />
-                    </div>
-                    <div class="flex flex-col mb-4">
-                      <label for="time">Time</label>
-                      <input
-                        id="time"
-                        type="time"
-                        name="time"
-                        bind:value={start_time}
-                        disabled={auction_underway}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div class="flex flex-col">
-                  <h4 class="mb-4">Auction end</h4>
-                  <div class="flex justify-between">
-                    <div class="flex flex-col mb-4 mr-6">
-                      <label for="date">Date</label>
-                      <input
-                        type="date"
-                        name="date"
-                        bind:value={end_date}
-                        disabled={auction_underway}
-                      />
-                    </div>
-                    <div class="flex flex-col mb-4">
-                      <label for="time">Time</label>
-                      <input
-                        type="time"
-                        name="time"
-                        bind:value={end_time}
-                        disabled={auction_underway}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="flex flex-col mb-4">
-                <div>
-                  <div
-                    class="mt-1 relative w-1/2 xl:w-1/3 rounded-md shadow-sm"
-                  >
-                    <label>
-                      Reserve price
-                      <span class="tooltip">
-                        <i class="ml-3 text-midblue text-xl tooltip">
-                          <Fa
-                            icon={faQuestionCircle}
-                            pull="right"
-                            class="mt-1"
-                          />
-                        </i>
-                        <span
-                          class="tooltip-text bg-gray-100 shadow ml-4 rounded"
-                        >
-                          Reserve price is the minimum price that you'll accept
-                          for the artwork. Setting one is optional.
-                        </span>
-                      </span>
-                      <input
-                        class="form-input block w-full pl-7 pr-12"
-                        placeholder="0"
-                        bind:value={reserve_price}
-                        disabled={auction_underway}
-                      />
-                      <div
-                        class="absolute inset-y-0 right-0 flex items-center mr-2 mt-8"
-                      >
-                        {ticker(edition.asking_asset)}
-                      </div>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          {/if}
+          <Currency />
+          <Price />
+          <Auction />
+          <Redeem />
         {/if}
         <div class="flex mt-10">
           <button type="submit" class="primary-btn">Submit</button>

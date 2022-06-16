@@ -81,7 +81,7 @@ export const assetLabel = async (asset) => {
   if (editions.length) {
     let r = editions[0];
     return r.artwork.title
-      ? r.artwork.title + (r.artwork.editions > 1 ? ` ${r.edition}/${r.artwork.editions}` : "")
+      ? r.artwork.title + (r.artwork.num_editions > 1 ? ` ${r.edition}/${r.artwork.num_editions}` : "")
       : "Untitled";
   }
 };

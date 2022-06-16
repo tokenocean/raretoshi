@@ -1,8 +1,5 @@
 export const artworkFields = `
   id,
-  editions {
-    edition
-  } 
   title
   description
   artist_id
@@ -25,6 +22,7 @@ export const artworkFields = `
     tag
   } 
   num_favorites
+  num_editions
 `;
 
 export const marketFields = `
@@ -177,6 +175,11 @@ export const getEditionByAsset = `query($asset: String!) {
   }
 }`;
 
+export const getEditions = `query($slug: String!) {
+  editions(where: {artwork: { slug: {_eq: $slug}}}) {
+    ${editionFields}
+  }
+}`;
 
 export const getArtworkBySlug = `query($slug: String!, $limit: Int) {
   artworks(where: {slug : {_eq: $slug}}, limit: 1) {

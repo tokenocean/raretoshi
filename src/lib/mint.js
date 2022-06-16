@@ -44,7 +44,7 @@ export let mint = async (artwork, address) => {
     }
     transactions.push({ contract, psbt: psbt.toBase64() });
     await sleep(10);
-    await info(`Signed issuance transaction 1 of ${artwork.editions.length}`);
+    await info(`Signed issuance transaction 1 of ${artwork.num_editions}`);
 
     if (total < required)
       throw { message: "Insufficient funds", required, btc, total };

@@ -236,10 +236,10 @@
       <div class="flex mt-4 mb-6">
         {#if !artwork.open_edition}
           <div class="my-auto">
-            Edition
             {edition.edition}
             of
-            <a href={`/a/${artwork.slug}`} class="text-secondary">{artwork.editions.length}</a>
+            <a href={`/a/${artwork.slug}/editions`} class="text-secondary">
+            {artwork.editions.num_editions} Editions</a>
           </div>
         {:else}
           <div class="my-auto flex justify-center items-center">
