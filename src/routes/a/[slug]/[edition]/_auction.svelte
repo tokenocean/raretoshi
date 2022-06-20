@@ -1,3 +1,17 @@
+<script>
+  $: enableAuction(auction_enabled);
+  let enableAuction = () => {
+    if (!start_date) {
+      start_date = format(addMinutes(new Date(), 15), "yyyy-MM-dd");
+      start_time = format(addMinutes(new Date(), 15), "HH:mm");
+    }
+    if (!end_date) {
+      end_date = format(addMinutes(addDays(new Date(), 3), 15), "yyyy-MM-dd");
+      end_time = format(addMinutes(addDays(new Date(), 3), 15), "HH:mm");
+    }
+  };
+</script>
+
 <div class="auction-toggle">
   <label for="auction" class="inline-flex items-center">
     <input

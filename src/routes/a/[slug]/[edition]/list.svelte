@@ -12,7 +12,6 @@
   import { api, query } from "$lib/api";
   import { fee, password, sighash, prompt, psbt } from "$lib/store";
   import { requirePassword } from "$lib/auth";
-  import { createTransaction } from "$queries/transactions";
   import {
     format,
     addDays,

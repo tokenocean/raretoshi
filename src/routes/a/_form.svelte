@@ -78,18 +78,17 @@
       <span class="ml-3">This is a physical artwork</span>
     </label>
   </div>
-  <OpenEdition {artwork} />
-  {#if !artwork.open_edition}
-    <div class="flex flex-col mb-6">
-      <label for="max_editions">Total Editions</label>
-      <input
-        id="max_editions"
-        placeholder="Editions"
-        bind:value={artwork.max_editions}
-        class="w-1/2"
-      />
-    </div>
-  {/if}
+
+  <div class="flex flex-col mb-6">
+    <label for="max_editions">Editions</label>
+    <input
+      id="max_editions"
+      placeholder="Editions"
+      bind:value={artwork.max_editions}
+      class="w-1/2"
+    />
+  </div>
+
   <div class="flex flex-col mb-6">
     <label for="description">Description</label>
     <textarea

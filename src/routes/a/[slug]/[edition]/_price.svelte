@@ -1,4 +1,3 @@
-        {#if edition.asking_asset}
           {#if !edition.redeem_code}
             <div class="flex w-full sm:w-3/4 mb-4">
               <div class="relative mt-1 rounded-md w-2/3 mr-6">
