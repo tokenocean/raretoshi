@@ -313,7 +313,8 @@ export const getLastTransactionsForAddress = `query($address: String!) {
       address: {_eq: $address},
       type: {_in: ["deposit", "withdrawal"]}
     },
-    order_by: [{ sequence: desc }]
+    order_by: [{ sequence: desc }],
+    limit: 50
   ) {
     hash
     type
@@ -323,14 +324,15 @@ export const getLastTransactionsForAddress = `query($address: String!) {
   }
 }`;
 
-export const getTransactions = `query($id: uuid!, $limit: Int) {
+export const getTransactions = `query($id: uuid!, $limit: Int, $offset: Int) {
   transactions(
     where: {
       user_id: {_eq: $id},
       type: {_in: ["deposit", "withdrawal"]}
     },
     order_by: {sequence: desc},
-    limit: $limit
+    limit: $limit,
+    offset: $offset
   ) {
     id
     hash
@@ -339,7 +341,6 @@ export const getTransactions = `query($id: uuid!, $limit: Int) {
     sequence
     asset
     type
-    json
     hex
     user_id
     address

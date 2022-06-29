@@ -121,6 +121,14 @@ services:
     networks:
       default:
         ipv4_address: 172.18.0.16
+  redis:
+    container_name: redis
+    image: redis
+    volumes:
+      - ./redis:/data
+    networks:
+      default:
+        ipv4_address: 172.18.0.17
 networks:
   default:
     external:

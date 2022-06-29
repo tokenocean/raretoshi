@@ -2,7 +2,7 @@ import { api, ipfs, q, electrs, registry } from "./api.js";
 import { formatISO, compareAsc, parseISO, subMinutes } from "date-fns";
 import reverse from "buffer-reverse";
 import fs from "fs";
-import { Psbt } from "liquidjs-lib";
+import { address as Address, Psbt, Transaction } from "liquidjs-lib";
 const sleep = (n) => new Promise((r) => setTimeout(r, n));
 import { btc, network } from "./wallet.js";
 import { app } from "./app.js";
@@ -33,8 +33,27 @@ import {
   updateUser,
 } from "./queries.js";
 
+import redis from "./redis.js";
+
 const txcache = {};
 const hexcache = {};
+
+const getHex = async (txid) => {
+  let hex = await redis.get(txid);
+  if (!hex) {
+    await wait(async () => {
+      try {
+        hex = await electrs.url(`/tx/${txid}/hex`).get().text();
+        return true;
+      } catch (e) {
+        return false;
+      }
+    });
+  }
+
+  await redis.set(txid, hex);
+  return hex;
+};
 
 const updateAvatars = async () => {
   fs.readdir("/export", async (err, files) => {
@@ -242,12 +261,14 @@ app.get("/transactions", auth, async (req, res) => {
     for (let i = 0; i < transactions.length; i++) {
       let { asset } = transactions[i];
       if (asset !== btc && !titles[asset]) {
-        let { artworks } = await q(getAssetArtworks, { assets: transactions.map(tx => tx.asset) });
+        let { artworks } = await q(getAssetArtworks, {
+          assets: transactions.map((tx) => tx.asset),
+        });
         artworks.map((a) => (titles[a.asset] = a.title));
-      } 
+      }
 
       transactions[i].label = titles[asset];
-    } 
+    }
 
     res.send(transactions);
   } catch (e) {
@@ -267,7 +288,7 @@ let getTxns = async (address, latest) => {
 
   while (curr.length >= 25 && !curr.find((tx) => latest.includes(tx.txid))) {
     curr = await electrs
-      .url(`/address/${address}/txs/chain/${curr[24].txid}`)
+      .url(`/address/${address}/txs/chain/${curr[curr.length - 1].txid}`)
       .get()
       .json();
 
@@ -278,6 +299,36 @@ let getTxns = async (address, latest) => {
   if (index < 0) return [];
   txns.splice(index + 1);
   return txns;
+};
+
+app.get("/txns", async (req, res) => {
+  res.send(await refreshTxCache("GmLusUQHGfzPWtQ4ExamWcMH814kLhRsq9"));
+});
+
+let refreshTxCache = async (address, latest) => {
+  let found;
+  let add = async (arr) => {
+    for (let i = 0; i < arr.length; i++) {
+      found ||= await redis.sIsMember(address, arr[i].txid);
+      await redis.sAdd(address, arr[i].txid);
+    }
+  }
+
+  let txns = await electrs.url(`/address/${address}/txs`).get().json();
+
+  await add(txns);
+
+  console.log(found);
+  while (txns.length >= 25 && !found) {
+    txns = await electrs
+      .url(`/address/${address}/txs/chain/${txns[txns.length - 1].txid}`)
+      .get()
+      .json();
+
+    await add(txns);
+  }
+
+  return [];
 };
 
 let updating = {};
@@ -300,16 +351,6 @@ let updateTransactions = async (address, user_id) => {
     let { txid, vin, vout, status } = txns[i];
 
     let hex;
-    wait(async () => {
-      try {
-        hex =
-          hexcache[txid] || (await electrs.url(`/tx/${txid}/hex`).get().text());
-        hexcache[txid] = hex;
-        return true;
-      } catch (e) {
-        return false;
-      }
-    });
 
     let total = {};
 
@@ -322,7 +363,8 @@ let updateTransactions = async (address, user_id) => {
         txcache[prev] = tx;
 
         let { asset, value, scriptpubkey_address: a } = tx.vout[vout];
-        if (asset && address === a) total[asset] = (total[asset] || 0) - parseInt(value);
+        if (asset && address === a)
+          total[asset] = (total[asset] || 0) - parseInt(value);
       } catch (e) {
         console.log("problem finding input", prev, e);
       }
@@ -330,7 +372,8 @@ let updateTransactions = async (address, user_id) => {
 
     for (let k = 0; k < vout.length; k++) {
       let { asset, value, scriptpubkey_address: a } = vout[k];
-      if (asset && address === a) total[asset] = (total[asset] || 0) + parseInt(value);
+      if (asset && address === a)
+        total[asset] = (total[asset] || 0) + parseInt(value);
     }
 
     let assets = Object.keys(total);
@@ -359,7 +402,6 @@ let updateTransactions = async (address, user_id) => {
         hash: txid,
         confirmed: status.confirmed,
         hex,
-        json: JSON.stringify(txns[i]),
       };
 
       if (status.block_time)
@@ -412,21 +454,20 @@ let scanUtxos = async (address) => {
   await updateTransactions(address, id);
 
   let uniq = (a, k) => [...new Map(a.map((x) => [k(x), x])).values()];
-  let { transactions } = await q(getTransactions, { id });
+  let { transactions } = await q(getTransactions, { id, limit: 25 });
 
   transactions = uniq(
     transactions.sort((a, b) => a.sequence - b.sequence),
     (tx) => tx.hash + tx.asset
-  )
+  );
 
-  transactions.map(async ({ id, hash, asset: txAsset, json, confirmed }) => {
+  transactions.map(async ({ id, hash, asset: txAsset, confirmed }) => {
     try {
-      if (!json) json = await electrs.url(`/tx/${hash}`).get().json();
-      else json = JSON.parse(json);
+      let tx = Transaction.fromHex(await getHex(hash));
 
-      json.vout.map(
-        ({ value, asset, scriptpubkey_address }, vout) =>
-          scriptpubkey_address === address &&
+      tx.outs.map(
+        ({ value, asset, script }, vout) =>
+          Address.fromOutputScript(script) === address &&
           asset === txAsset &&
           !outs.find(
             (o) => hash === o.txid && vout === o.vout && o.asset === asset
@@ -441,7 +482,7 @@ let scanUtxos = async (address) => {
           })
       );
     } catch (e) {
-      console.log(e);
+      if (!e.message.includes("matching")) console.log(e);
     }
   });
 
