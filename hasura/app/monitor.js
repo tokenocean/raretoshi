@@ -302,34 +302,98 @@ let getTxns = async (address, latest) => {
 };
 
 app.get("/txns", async (req, res) => {
-  res.send(await refreshTxCache("GmLusUQHGfzPWtQ4ExamWcMH814kLhRsq9"));
-});
+  try {
+    let address = "XNFVG53mzFiZhiBA1fNs8VWmrFX4RDnnnN";
+    let utxoSet = `${address}:utxos`;
+    let last = await redis.get(address);
 
-let refreshTxCache = async (address, latest) => {
-  let found;
-  let add = async (arr) => {
-    for (let i = 0; i < arr.length; i++) {
-      found ||= await redis.sIsMember(address, arr[i].txid);
-      await redis.sAdd(address, arr[i].txid);
+    let curr = await electrs.url(`/address/${address}/txs`).get().json();
+    let txns = [
+      ...curr.filter((tx) => !tx.status.confirmed).reverse(),
+      ...curr.filter((tx) => tx.status.confirmed),
+    ];
+
+    console.log("LAST", last);
+
+    while (curr.length >= 25 && !txns.includes(last)) {
+      let prev = txns[txns.length - 1].txid;
+      console.log("PREV", prev);
+      curr = await electrs
+        .url(`/address/${address}/txs/chain/${prev}`)
+        .get()
+        .json();
+      console.log("hi");
+      txns = [...txns, ...curr];
     }
+
+    let index = txns.findIndex((tx) => tx.txid === last);
+    txns = txns.slice(0, index - 1);
+    if (txns.length) await redis.set(address, txns[0].txid);
+    txns.reverse();
+
+    console.log("TXNS", txns.map(tx => tx.txid));
+
+    let future = [];
+    let check = true;
+
+    let process = async (tx) => {
+      let { ins, outs } = tx;
+
+      console.log("=================");
+      console.log(tx.getId());
+
+
+      for (let j = 0; j < ins.length; j++) {
+        let { hash, index } = ins[j];
+        let txid = reverse(hash).toString("hex");
+        console.log("REMOVING", txid, index);
+        if (
+          !(await redis.sIsMember(utxoSet, `${txid}:${index}`)) &&
+          txns.find((tx) => tx.txid === txid)
+        ) {
+          // console.log("PUSHING", tx.getId());
+          // future.push(tx);
+          check = false;
+        } else {
+          let i = future.findIndex(x => x.txid === tx.getId());
+          if (i >= 0) future.splice(i, 1) && console.log("SPLICING", tx.getId());;
+        } 
+        await redis.sRem(utxoSet, `${txid}:${index}`);
+      }
+
+      for (let j = 0; j < outs.length; j++) {
+        let { script } = outs[j];
+        let txid = tx.getId();
+
+        try {
+          if (Address.fromOutputScript(script, network) === address) {
+            console.log("ADDING", txid, j);
+            await redis.sAdd(utxoSet, `${txid}:${j}`);
+          }
+        } catch (e) {}
+      }
+    };
+
+    for (let i = 0; i < txns.length; i++) {
+      if (check) for (let j = 0; j < future.length; j++) process(future[j]);
+      check = true;
+
+      let hex = await getHex(txns[i].txid);
+      let tx = Transaction.fromHex(hex);
+
+      process(tx);
+    }
+
+    let utxos = await redis.sMembers(utxoSet);
+
+    console.log("huh", utxos.length);
+
+    res.send({ utxos });
+  } catch (e) {
+    console.log(e);
+    res.code(500).send(e.message);
   }
-
-  let txns = await electrs.url(`/address/${address}/txs`).get().json();
-
-  await add(txns);
-
-  console.log(found);
-  while (txns.length >= 25 && !found) {
-    txns = await electrs
-      .url(`/address/${address}/txs/chain/${txns[txns.length - 1].txid}`)
-      .get()
-      .json();
-
-    await add(txns);
-  }
-
-  return [];
-};
+});
 
 let updating = {};
 let updateTransactions = async (address, user_id) => {
@@ -555,6 +619,7 @@ app.get("/balance", auth, async (req, res) => {
 app.get("/address/:address/utxo", async (req, res) => {
   try {
     let { address } = req.params;
+
     await scanUtxos(address);
     let { utxos } = await q(getUtxos, { address });
     res.send(
