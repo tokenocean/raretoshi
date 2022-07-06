@@ -311,53 +311,61 @@ app.get("/txns", async (req, res) => {
     let txns = [
       ...curr.filter((tx) => !tx.status.confirmed).reverse(),
       ...curr.filter((tx) => tx.status.confirmed),
-    ];
-
-    console.log("LAST", last);
+    ].map((tx) => tx.txid);
 
     while (curr.length >= 25 && !txns.includes(last)) {
-      let prev = txns[txns.length - 1].txid;
-      console.log("PREV", prev);
+      let prev = txns.at(-1);
       curr = await electrs
         .url(`/address/${address}/txs/chain/${prev}`)
         .get()
         .json();
-      console.log("hi");
-      txns = [...txns, ...curr];
+      txns = [...txns, ...curr.map((tx) => tx.txid)];
     }
 
-    let index = txns.findIndex((tx) => tx.txid === last);
-    txns = txns.slice(0, index - 1);
-    if (txns.length) await redis.set(address, txns[0].txid);
+    let index = txns.indexOf(last);
+    if (index > -1) txns = txns.slice(0, index);
+    if (txns.length) await redis.set(address, txns[0]);
     txns.reverse();
 
-    console.log("TXNS", txns.map(tx => tx.txid));
+    console.log(txns);
 
-    let future = [];
-    let check = true;
+    while (txns.length) {
+      // await new Promise((r) => setTimeout(r, 300));
+      let hex = await getHex(txns[0]);
+      let tx = Transaction.fromHex(hex);
 
-    let process = async (tx) => {
       let { ins, outs } = tx;
+      let defer;
+      let skip = {};
 
-      console.log("=================");
-      console.log(tx.getId());
-
+      console.log("PROCESSING", tx.getId());
 
       for (let j = 0; j < ins.length; j++) {
         let { hash, index } = ins[j];
         let txid = reverse(hash).toString("hex");
+        if (!(await redis.sIsMember(utxoSet, `${txid}:${index}`))) {
+          let k = txns.indexOf(txid);
+          if (k > -1) {
+            console.log("DEFERRING", tx.getId());
+            defer = true;
+            txns.splice(k, 1);
+            txns.unshift(txid);
+            break;
+          }
+          else {
+            skip[j] = true;
+            console.log("IGNORE", txid);
+          } 
+        }
+      }
+
+      if (defer) continue;
+
+      for (let j = 0; j < ins.length; j++) {
+        if (skip[j]) continue;
+        let { hash, index } = ins[j];
+        let txid = reverse(hash).toString("hex");
         console.log("REMOVING", txid, index);
-        if (
-          !(await redis.sIsMember(utxoSet, `${txid}:${index}`)) &&
-          txns.find((tx) => tx.txid === txid)
-        ) {
-          // console.log("PUSHING", tx.getId());
-          // future.push(tx);
-          check = false;
-        } else {
-          let i = future.findIndex(x => x.txid === tx.getId());
-          if (i >= 0) future.splice(i, 1) && console.log("SPLICING", tx.getId());;
-        } 
         await redis.sRem(utxoSet, `${txid}:${index}`);
       }
 
@@ -372,21 +380,11 @@ app.get("/txns", async (req, res) => {
           }
         } catch (e) {}
       }
-    };
 
-    for (let i = 0; i < txns.length; i++) {
-      if (check) for (let j = 0; j < future.length; j++) process(future[j]);
-      check = true;
-
-      let hex = await getHex(txns[i].txid);
-      let tx = Transaction.fromHex(hex);
-
-      process(tx);
+      txns.shift();
     }
 
     let utxos = await redis.sMembers(utxoSet);
-
-    console.log("huh", utxos.length);
 
     res.send({ utxos });
   } catch (e) {
