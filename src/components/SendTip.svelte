@@ -28,6 +28,13 @@
 
       amount = 1000;
       info("Tip sent!");
+
+      // notify artist that they were tipped
+      await api.url("/mail-tip-received").auth(`Bearer ${$token}`).post({
+        artistId: $tipUser.id,
+        tipperId: $session.user.id,
+        tipAmount: amount,
+      });
     } catch (e) {
       err(e);
     }

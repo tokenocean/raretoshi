@@ -71,7 +71,7 @@ app.post("/mail-comment-received", auth, async (req, res) => {
   let user = await getUserById(artistId);
 
   let result = await mail.send({
-    template: "message-received",
+    template: "comment-received",
     locals: {
       artistName: user.full_name,
       artworkName,
@@ -80,6 +80,26 @@ app.post("/mail-comment-received", auth, async (req, res) => {
     },
     message: {
       to: user.display_name,
+    },
+  });
+
+  res.send(result);
+});
+
+app.post("/mail-tip-received", auth, async (req, res) => {
+  let { artistId, tipperId, tipAmount } = req.body;
+  let artist = await getUserById(artistId);
+  let tipper = await getUserById(tipperId);
+
+  let result = await mail.send({
+    template: "tip-received",
+    locals: {
+      artistName: artist.full_name,
+      tipperName: tipper.full_name,
+      tipAmount,
+    },
+    message: {
+      to: artist.display_name,
     },
   });
 
