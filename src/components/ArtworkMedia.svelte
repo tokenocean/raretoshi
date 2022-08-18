@@ -23,7 +23,7 @@
     artwork &&
     (thumb
       ? `/api/public/${artwork.filename}.${artwork.filetype.split("/")[1]}`
-      : `/api/ipfs/${artwork.filename}`);
+      : (cid && `/api/ipfs/${cid}`));
 
   $: cover = !showDetails;
   $: contain = showDetails;

@@ -247,6 +247,7 @@ app.get("/assets/:page", auth, async (req, res) => {
   }
 });
 
+
 app.get("/:address/:asset/balance", async (req, res) => {
   try {
     let { address, asset } = req.params;

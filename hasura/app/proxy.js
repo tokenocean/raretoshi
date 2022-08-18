@@ -1,8 +1,21 @@
+import { create } from "ipfs-http-client";
 import proxy from "fastify-http-proxy";
 import httpProxy from "http-proxy";
+import fs from "fs";
 import { app } from "./app.js";
+import { Readable, pipeline } from "stream";
+import { extract } from "it-tar";
+import { pipe } from "it-pipe";
+import toBuffer from "it-to-buffer";
+import all from "it-all";
+import drain from "it-drain";
+import last from "it-last";
+import map from "it-map";
 
-const { LIQUID_ELECTRS_URL, HBP_URL, IPFS_WEB_URL, HASURA_URL } = process.env;
+import {fileTypeFromBuffer} from 'file-type';
+
+const { LIQUID_ELECTRS_URL, HBP_URL, IPFS_WEB_URL, HASURA_URL, IPFS_URL } =
+  process.env;
 
 let p = httpProxy
   .createProxyServer({
@@ -27,11 +40,32 @@ app.register(proxy, {
   rewritePrefix: "/v1",
 });
 
-app.register(proxy, {
-  upstream: IPFS_WEB_URL,
-  prefix: "/ipfs",
-  rewritePrefix: "/ipfs",
+async function* tarballed(source) {
+  yield* pipe(source, extract(), async function* (source) {
+    for await (const entry of source) {
+      yield {
+        ...entry,
+        body: await toBuffer(map(entry.body, (buf) => buf.slice())),
+      };
+    }
+  });
+}
+
+app.get("/ipfs/:cid", async (req, res) => {
+  console.log("HI");
+  let { cid } = req.params;
+  let ipfs = create(IPFS_URL);
+  const output = await pipe(ipfs.get(cid), tarballed, (source) => all(source));
+  console.log(output);
+  res.type(fileTypeFromBuffer(output[0].body));
+  res.send(output[0].body);
 });
+
+// app.register(proxy, {
+//   upstream: IPFS_WEB_URL,
+//   prefix: "/ipfs",
+//   rewritePrefix: "/ipfs",
+// });
 
 app.register(proxy, {
   upstream: HBP_URL,
