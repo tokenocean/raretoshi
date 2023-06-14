@@ -2,7 +2,7 @@ version: "3.6"
 services:
   rar:
     container_name: rar
-    image: raretoshi
+    image: asoltys/raretoshi
     ports:
       - "3004:3000"
   lapp:
