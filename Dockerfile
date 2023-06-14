@@ -1,4 +1,4 @@
-FROM base
+FROM asoltys/raretoshi-base
 
 ARG NODE_ENV=production
 ENV NODE_ENV $NODE_ENV
