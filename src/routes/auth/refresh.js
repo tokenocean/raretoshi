@@ -5,7 +5,7 @@ import { getUser } from "$queries/users";
 
 const opts = {
   httpOnly: true,
-  sameSite: "lax",
+  sameSite: "none",
   path: "/",
 };
 

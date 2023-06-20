@@ -10,7 +10,10 @@
   let signature;
   onMount(async () => {
     signature = (await signMessage(message)).toString("base64");
-      console.log(verifySignature(message, signature));
+
+    window.addEventListener("message", (event) => {
+      event.source.postMessage(JSON.stringify({ address: $user.address, signature }), event.origin);
+    });
   });
 </script>
 

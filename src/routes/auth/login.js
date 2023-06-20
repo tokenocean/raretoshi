@@ -27,7 +27,7 @@ export async function POST({ locals, request }) {
           cookie.serialize("token", jwt_token, {
             httpOnly: true,
             maxAge: tokenExpiry,
-            sameSite: "lax",
+            sameSite: "none",
             path: "/",
             expires: addSeconds(new Date(), tokenExpiry),
           }),
