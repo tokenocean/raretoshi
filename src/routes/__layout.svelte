@@ -13,7 +13,13 @@
 
     props.rates = rates;
 
-    let authRequired = [/^\/a\/create/, /^\/a\/edit/, /^\/wallet/, /^\/settings/, /^\/sign/];
+    let authRequired = [
+      /^\/a\/create/,
+      /^\/a\/edit/,
+      /^\/wallet/,
+      /^\/settings/,
+      /^\/sign/,
+    ];
     if (!session?.user && authRequired.find((p) => url.pathname.match(p))) {
       return {
         status: 302,
@@ -190,7 +196,8 @@
       fetchMessages();
       authCheck();
       initializeBTCUnits();
-      if (!$password) $password = window.sessionStorage.getItem("password");
+      if (!$password && window.location === window.parent.location)
+        $password = window.sessionStorage.getItem("password");
     }
   });
 </script>

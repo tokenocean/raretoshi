@@ -41,6 +41,7 @@ export const activate = (ticket) => {
 
 export const checkAuthFromLocalStorage = (user) => {
   const usernameFromStorage =
+    window.location === window.parent.location &&
     sessionStorage.getItem("username") &&
     sessionStorage.getItem("username") !== "undefined" &&
     JSON.parse(sessionStorage.getItem("username"));
