@@ -3,6 +3,7 @@ import cookie from "cookie";
 const opts = {
   httpOnly: true,
   sameSite: "none",
+  secure: true,
   path: "/",
 };
 

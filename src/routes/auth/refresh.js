@@ -6,6 +6,7 @@ import { getUser } from "$queries/users";
 const opts = {
   httpOnly: true,
   sameSite: "none",
+  secure: true,
   path: "/",
 };
 

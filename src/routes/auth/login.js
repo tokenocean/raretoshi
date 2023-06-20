@@ -28,6 +28,7 @@ export async function POST({ locals, request }) {
             httpOnly: true,
             maxAge: tokenExpiry,
             sameSite: "none",
+            secure: true,
             path: "/",
             expires: addSeconds(new Date(), tokenExpiry),
           }),
