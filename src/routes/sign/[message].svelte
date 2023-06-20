@@ -1,4 +1,5 @@
 <script>
+  import { requirePassword } from "$lib/auth";
   import { user } from "$lib/store";
   import { page } from "$app/stores";
   import { copy, focus } from "$lib/utils";
@@ -9,11 +10,15 @@
 
   let signature;
   onMount(async () => {
+    await requirePassword();
     signature = (await signMessage(message)).toString("base64");
 
-    window.addEventListener("message", (event) => {
-      event.source.postMessage(JSON.stringify({ address: $user.address, signature }), event.origin);
-    });
+    window.opener.postMessage(
+      JSON.stringify({ address: $user.address, signature }),
+      "https://athanasi.coinos.io"
+    );
+
+    window.close();
   });
 </script>
 
