@@ -123,7 +123,7 @@ services:
     image: ghcr.io/vulpemventures/elements:0.21.0.2
     container_name: liquid
     volumes:
-      - ./liquidmainnet:/home/elements/.elements
+      - ./liquidregtest/liquid-config/:/home/elements/.elements
     restart: always
   redis:
     container_name: redis
