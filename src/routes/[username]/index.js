@@ -6,6 +6,7 @@ export async function GET({
   params: { username },
 }) {
   try {
+    username = username.replace(/\s/g, "").toLowerCase()
     let { users } = await q(getUserByUsername, { username, artworksLimit: 10 });
 
     if (!users.length) throw new Error("user not found");

@@ -44,7 +44,7 @@ export const getUserByAddress = `query($address: String!) {
 }`;
 
 export const getUserByUsername = `query($username: String!, $artworksLimit: Int) {
-  users(where: { username: {_eq: $username }}, limit: 1) {
+  users(where: { username: {_ilike: $username }}, limit: 1) {
     ${fields}
     ${computed}
     holdings(where: { held: {_is_null: false }}, limit: $artworksLimit, order_by: { created_at: desc }) {

@@ -60,7 +60,8 @@ app.post("/register", async (req, res) => {
     req.body;
 
   try {
-    let { users } = await q(getUserByUsername, { username });
+    username = username.replace(/\s/g, "");
+    let { users } = await q(getUserByUsername, { username: username.toLowerCase() });
     if (users.length) {
         throw new Error("Username taken");
     }

@@ -65,15 +65,15 @@ services:
       - "5433:5432"
   hasura:
     container_name: hasura
-    image: hasura/graphql-engine:v2.0.9.cli-migrations-v3
+    image: hasura/graphql-engine:v2.34.0
     ports:
       - "8080:8080"
     depends_on:
       - postgres
     restart: always
-    volumes:
-      - ./migrations:/hasura-migrations
-      - ./metadata:/hasura-metadata
+    # volumes:
+    #   - ./migrations:/hasura-migrations
+    #   - ./metadata:/hasura-metadata
     environment:
       HASURA_GRAPHQL_DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_USER}"
       HASURA_GRAPHQL_ADMIN_SECRET: "${HASURA_GRAPHQL_ADMIN_SECRET}"

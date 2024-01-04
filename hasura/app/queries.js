@@ -502,7 +502,7 @@ export const getUserByEmail = `query($email: String!) {
 }`;
 
 export const getUserByUsername = `query($username: String!) {
-  users(where: {_or: [{display_name: {_eq: $username}}, {username: {_eq: $username }}]}, limit: 1) {
+  users(where: {_or: [{display_name: {_ilike: $username}}, {username: {_ilike: $username }}]}, limit: 1) {
     id
     address
     multisig
