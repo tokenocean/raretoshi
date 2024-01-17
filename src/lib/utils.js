@@ -24,6 +24,7 @@ import { browser } from "$app/env";
 import { fromBase58 } from "bip32";
 import { network } from "$lib/wallet";
 
+export const SATS = 100000000
 export const btc = import.meta.env.VITE_BTC;
 export const cad = import.meta.env.VITE_CAD;
 export const usd = import.meta.env.VITE_USD;

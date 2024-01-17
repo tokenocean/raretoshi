@@ -3,6 +3,8 @@ import { compareAsc, parseISO, subMinutes } from "date-fns";
 import { getCurrentUser, getLastTransaction, getUser as getUserQuery } from "./queries.js";
 import reverse from "buffer-reverse";
 
+export const SATS = 100000000;
+
 export const kebab = (str) =>
   str &&
   str
