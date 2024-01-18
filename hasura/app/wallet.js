@@ -1,5 +1,5 @@
 import { mnemonicToSeedSync } from "bip39";
-import { fromSeed } from "bip32";
+import { fromSeed, fromBase58 } from "bip32";
 import redis from "./redis.js";
 import { sleep, wait } from "./utils.js";
 
@@ -78,6 +78,47 @@ export const broadcast = async (psbt) => {
   let hex = tx.toHex();
 
   return lq.sendRawTransaction(hex);
+};
+
+export const importKeys = async (pubkey) => {
+  let key = fromBase58(pubkey, network);
+  let { address } = payments.p2sh({
+    redeem: payments.p2wpkh({
+      pubkey: key.publicKey,
+      network,
+    }),
+  });
+
+  let hex = key.publicKey.toString("hex");
+  let desc = `sh(wpkh(${hex}))`;
+  let { checksum } = await lq.getDescriptorInfo(desc);
+  desc += `#${checksum}`;
+  let timestamp = "now";
+  await lq.importDescriptors([{ desc, timestamp }]);
+
+  let server = keypair().pubkey.toString("hex");
+  let sorted = [hex, server].sort((a, b) => a.localeCompare(b));
+  let redeem = payments.p2ms({
+    m: 2,
+    pubkeys: sorted.map((k) => Buffer.from(k, "hex")),
+    network,
+  });
+
+  ({ address } = payments.p2sh({
+    redeem: payments.p2wsh(
+      {
+        redeem,
+        network,
+      },
+      network
+    ),
+  }));
+
+  desc = `sh(wsh(multi(2,${sorted[0]},${sorted[1]})))`;
+  ({ checksum } = await lq.getDescriptorInfo(desc));
+  desc += `#${checksum}`;
+
+  await lq.importDescriptors([{ desc, timestamp }]);
 };
 
 export const parseVal = (v) => parseInt(v.slice(1).toString("hex"), 16);

@@ -1,7 +1,7 @@
 import { app } from "./app.js";
 import jwt from "jsonwebtoken";
 const { HASURA_JWT } = process.env;
-import { q, cf, hbp } from "./api.js";
+import { q, cf, hbp, lq } from "./api.js";
 import wretch from "wretch";
 import {
   deleteUserByEmail,
@@ -61,11 +61,12 @@ app.post("/register", async (req, res) => {
 
   try {
     username = username.replace(/\s/g, "");
-    let { users } = await q(getUserByUsername, { username: username.toLowerCase() });
+    let { users } = await q(getUserByUsername, {
+      username: username.toLowerCase(),
+    });
     if (users.length) {
-        throw new Error("Username taken");
+      throw new Error("Username taken");
     }
-
     let response = await hbp
       .url("/auth/register")
       .post({ email, password })
@@ -116,8 +117,10 @@ app.get("/activate", async (req, res) => {
 app.post("/change-password", async (req, res) => {
   const { new_password, ticket } = req.body;
   let { auth_accounts } = await q(getUserByTicket, { ticket });
-  let { user: { id }} = auth_accounts[0];
-  await q(updateUser, { id, user: { wallet_initialized: false }});
+  let {
+    user: { id },
+  } = auth_accounts[0];
+  await q(updateUser, { id, user: { wallet_initialized: false } });
 
   res.send(
     await hbp

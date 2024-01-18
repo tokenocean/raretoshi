@@ -5,6 +5,7 @@ import {
   broadcast,
   btc,
   hex,
+  importKeys,
   network,
   parseAsset,
   parseVal,
@@ -37,8 +38,6 @@ let balances = async (address, asset) => {
   confirmed = confirmed.reduce(sum, {});
   unconfirmed = unconfirmed.reduce(sum, {});
 
-  console.log("CONF", confirmed)
-
   return { confirmed, unconfirmed };
 };
 
@@ -52,6 +51,17 @@ export const utxos = async (address) => {
     value: Math.round(amount * SATS),
   }));
 };
+
+app.post("/importKeys", async (req, res) => {
+  try {
+    let { pubkey } = req.body;
+    await importKeys(pubkey);
+    res.send({ ok: true });
+  } catch (e) {
+    console.log("problem getting assets", e);
+    res.code(500).send(e.message);
+  }
+});
 
 app.get("/assets/count", auth, async (req, res) => {
   let { address, multisig } = await getUser(req);
