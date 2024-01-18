@@ -44,9 +44,10 @@ let balances = async (address, asset) => {
 let locked = {};
 export const utxos = async (address) => {
   let utxos = await lq.listUnspent(0, 99999999, [address]);
-  return utxos.map(({ asset, confirmations, txid, amount }) => ({
+  return utxos.map(({ asset, confirmations, vout, txid, amount }) => ({
     asset,
     confirmations,
+      vout,
     txid,
     value: Math.round(amount * SATS),
   }));
