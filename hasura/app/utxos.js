@@ -33,7 +33,7 @@ let balances = async (address, asset) => {
   (await utxos(address))
     .filter((tx) => !asset || tx.asset === asset)
     .map((tx) =>
-      tx.confirmations > 0 ? confirmed.push(tx) : unconfirmed.push(tx)
+        tx.confirmed ? confirmed.push(tx) : unconfirmed.push(tx)
     );
 
   let sum = (a, b) => ({ ...a, [b.asset]: (a[b.asset] || 0) + b.value });
@@ -62,14 +62,33 @@ export const utxos = async (address) => {
     return !result;
   });
 
-  let { unspents } = await lq.scanTxOutSet("start", [desc]);
-  return unspents.map(({ asset, vout, txid, amount }) => ({
+  let r = await lq.scanTxOutSet("start", [desc]);
+
+  let utxos = r.unspents.map(({ asset, vout, txid, amount }) => ({
     asset,
-    confirmations: 1,
-    vout,
+    confirmed: true,
     txid,
     value: Math.round(amount * SATS),
+    vout,
   }));
+
+  let mempool = await lq.getRawMempool();
+  for (let txid of mempool) {
+    let hex = await lq.getRawTransaction(txid);
+    let tx = await lq.decodeRawTransaction(hex);
+    for (let { value, asset, n, scriptPubKey } of tx.vout) {
+      if (scriptPubKey && scriptPubKey.address === address)
+        utxos.push({
+          asset,
+          confirmed: false,
+          txid,
+          value: Math.round(value * SATS),
+          vout: n,
+        });
+    }
+  }
+
+  return utxos;
 };
 
 app.get("/assets/count", auth, async (req, res) => {
