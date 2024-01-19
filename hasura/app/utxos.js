@@ -49,6 +49,12 @@ export const utxos = async (address) => {
   if (!users.length) return res.code.send("user not found");
   let { pubkey } = users[0];
   let desc = await descriptor(pubkey);
+
+  await wait(async () => {
+    let result = await lq.scanTxOutSet("status")
+    return !result
+  });
+
   let { unspents } = await lq.scanTxOutSet("start", [desc]);
   return unspents.map(({ asset, vout, txid, amount }) => ({
     asset,
