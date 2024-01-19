@@ -4,9 +4,8 @@ import {
   blocktime,
   broadcast,
   btc,
-  descriptor,
+  keypair,
   hex,
-  importKeys,
   network,
   parseAsset,
   parseVal,
@@ -24,6 +23,7 @@ import {
   getUserByAddress,
 } from "./queries.js";
 import { compareDesc, parseISO, formatISO } from "date-fns";
+import { fromBase58 } from "bip32";
 
 let balances = async (address, asset) => {
   let confirmed = [],
@@ -45,14 +45,22 @@ let balances = async (address, asset) => {
 
 let locked = {};
 export const utxos = async (address) => {
-  let { users } = await q(getUserByAddress, { address });
+  let { multisig, users } = await q(getUserByAddress, { address });
   if (!users.length) return res.code.send("user not found");
   let { pubkey } = users[0];
-  let desc = await descriptor(pubkey);
+  let key = fromBase58(pubkey, network);
+  let hex = key.publicKey.toString("hex");
+  let server = keypair().pubkey.toString("hex");
+  let sorted = [hex, server].sort((a, b) => a.localeCompare(b));
+
+  let desc =
+    address === multisig
+      ? `sh(wsh(multi(2,${sorted[0]},${sorted[1]})))`
+      : `sh(wpkh(${hex}))`;
 
   await wait(async () => {
-    let result = await lq.scanTxOutSet("status")
-    return !result
+    let result = await lq.scanTxOutSet("status");
+    return !result;
   });
 
   let { unspents } = await lq.scanTxOutSet("start", [desc]);

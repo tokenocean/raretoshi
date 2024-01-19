@@ -80,52 +80,6 @@ export const broadcast = async (psbt) => {
   return lq.sendRawTransaction(hex);
 };
 
-export const descriptor = (pubkey) => {
-  let key = fromBase58(pubkey, network);
-  return `sh(wpkh(${key.publicKey.toString("hex")}))`;
-};
-
-export const importKeys = async (pubkey) => {
-  let key = fromBase58(pubkey, network);
-  let { address } = payments.p2sh({
-    redeem: payments.p2wpkh({
-      pubkey: key.publicKey,
-      network,
-    }),
-  });
-
-  let hex = key.publicKey.toString("hex");
-  let desc = `sh(wpkh(${hex}))`;
-  let { checksum } = await lq.getDescriptorInfo(desc);
-  desc += `#${checksum}`;
-  let timestamp = "now";
-  await lq.importDescriptors([{ desc, timestamp }]);
-
-  let server = keypair().pubkey.toString("hex");
-  let sorted = [hex, server].sort((a, b) => a.localeCompare(b));
-  let redeem = payments.p2ms({
-    m: 2,
-    pubkeys: sorted.map((k) => Buffer.from(k, "hex")),
-    network,
-  });
-
-  ({ address } = payments.p2sh({
-    redeem: payments.p2wsh(
-      {
-        redeem,
-        network,
-      },
-      network
-    ),
-  }));
-
-  desc = `sh(wsh(multi(2,${sorted[0]},${sorted[1]})))`;
-  ({ checksum } = await lq.getDescriptorInfo(desc));
-  desc += `#${checksum}`;
-
-  await lq.importDescriptors([{ desc, timestamp }]);
-};
-
 export const parseVal = (v) => parseInt(v.slice(1).toString("hex"), 16);
 export const parseAsset = (v) => reverse(v.slice(1)).toString("hex");
 
