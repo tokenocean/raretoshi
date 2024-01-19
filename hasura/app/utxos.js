@@ -43,7 +43,6 @@ let balances = async (address, asset) => {
   return { confirmed, unconfirmed };
 };
 
-let locked = {};
 export const utxos = async (address) => {
   let { users } = await q(getUserByAddress, { address });
   if (!users.length) return res.code.send("user not found");
@@ -72,17 +71,6 @@ export const utxos = async (address) => {
     value: Math.round(amount * SATS),
   }));
 };
-
-app.post("/importKeys", async (req, res) => {
-  try {
-    let { pubkey } = req.body;
-    await importKeys(pubkey);
-    res.send({ ok: true });
-  } catch (e) {
-    console.log("problem getting assets", e);
-    res.code(500).send(e.message);
-  }
-});
 
 app.get("/assets/count", auth, async (req, res) => {
   let { address, multisig } = await getUser(req);

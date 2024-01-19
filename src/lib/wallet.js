@@ -102,8 +102,6 @@ export const createWallet = (mnemonic, pass) => {
     let key = keypair(mnemonic, pass);
     let pubkey = key.base58;
 
-    api().url("/importKeys").post({ pubkey });
-
     return {
       address: singlesig(key).address,
       pubkey,
