@@ -45,9 +45,9 @@ let balances = async (address, asset) => {
 
 let locked = {};
 export const utxos = async (address) => {
-  let { multisig, users } = await q(getUserByAddress, { address });
+  let { users } = await q(getUserByAddress, { address });
   if (!users.length) return res.code.send("user not found");
-  let { pubkey } = users[0];
+  let { multisig, pubkey } = users[0];
   let key = fromBase58(pubkey, network);
   let hex = key.publicKey.toString("hex");
   let server = keypair().pubkey.toString("hex");
