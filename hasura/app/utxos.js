@@ -4,6 +4,7 @@ import {
   blocktime,
   broadcast,
   btc,
+  descriptor,
   hex,
   importKeys,
   network,
@@ -20,6 +21,7 @@ import {
   getAssetArtworks,
   getTransactionsByTxid,
   getUserByUsername,
+  getUserByAddress,
 } from "./queries.js";
 import { compareDesc, parseISO, formatISO } from "date-fns";
 
@@ -43,11 +45,15 @@ let balances = async (address, asset) => {
 
 let locked = {};
 export const utxos = async (address) => {
-  let utxos = await lq.listUnspent(0, 99999999, [address]);
-  return utxos.map(({ asset, confirmations, vout, txid, amount }) => ({
+  let { users } = await q(getUserByAddress, { address });
+  if (!users.length) return res.code.send("user not found");
+  let { pubkey } = users[0];
+  let desc = await descriptor(pubkey);
+  let { unspents } = await lq.scanTxOutSet("start", [desc]);
+  return unspents.map(({ asset, vout, txid, amount }) => ({
     asset,
-    confirmations,
-      vout,
+    confirmations: 1,
+    vout,
     txid,
     value: Math.round(amount * SATS),
   }));

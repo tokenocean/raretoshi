@@ -16,6 +16,7 @@ export const getUserByAddress = `query($address: String!) {
     id
     address
     multisig
+    pubkey
   }
 }`;
 

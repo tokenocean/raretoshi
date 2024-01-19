@@ -80,6 +80,11 @@ export const broadcast = async (psbt) => {
   return lq.sendRawTransaction(hex);
 };
 
+export const descriptor = (pubkey) => {
+  let key = fromBase58(pubkey, network);
+  return `sh(wpkh(${key.publicKey.toString("hex")}))`;
+};
+
 export const importKeys = async (pubkey) => {
   let key = fromBase58(pubkey, network);
   let { address } = payments.p2sh({
